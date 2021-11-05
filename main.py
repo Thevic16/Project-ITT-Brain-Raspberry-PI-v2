@@ -55,7 +55,7 @@ def callback(indata, frames, time, status):
     
     
 # Set up serialPorts.
-#serialPortSTM32 = serial.Serial(port="/dev/ttyACM0", baudrate=9600,bytesize=8, timeout=2, stopbits=serial.STOPBITS_ONE)
+serialPortSTM32 = serial.Serial(port="/dev/ttyACM0", baudrate=9600,bytesize=8, timeout=2, stopbits=serial.STOPBITS_ONE)
 
 #serialPortGPRS = serial.Serial("/dev/ttyS0", baudrate=9600, timeout=1)
 
@@ -317,6 +317,7 @@ def speech_recognition_thread():
                 rec = vosk.KaldiRecognizer(model, args.samplerate)
                 #Defining variable to compare
                 text_str = ""
+                past_text_str = ""
                 while True:
                     data = q.get()
                     if rec.AcceptWaveform(data):
@@ -328,26 +329,26 @@ def speech_recognition_thread():
                     if dump_fn is not None:
                         dump_fn.write(data)
 
-                    if(len(text_str) > 12):
-                        print("vamos a ver")
-
-                    # Conditions.
-                    if "sofía" in text_str and "delante"  in text_str:
-                        #serialPortSTM32.write(b"w \r\n")
-                        print("Comando de voz hacia adelante")
-                    elif "sofía" in text_str and "derecha" in text_str:
-                        #serialPortSTM32.write(b"d \r\n")
-                        print("Comando de voz hacia la derecha")
-                    elif "sofía" in text_str and "atrás" in text_str:
-                        #serialPortSTM32.write(b"s \r\n")
-                        print("Comando de voz hacia atras")
-                    elif "sofía" in text_str and "izquierda" in text_str:
-                        #serialPortSTM32.write(b"a \r\n")
-                        print("Comando de voz hacia la izquierda")
-                    elif ("sofía" in text_str and "deten" in text_str) or ("Sofía" in text_str and "parate" in text_str):
-                        #serialPortSTM32.write(b"x \r\n")
-                        print("Comando de voz detener silla")
-
+        
+                    if text_str != past_text_str:
+                        # Conditions.
+                        if "sofía" in text_str and "delante"  in text_str:
+                            serialPortSTM32.write(b"w \r\n")
+                            print("Comando de voz hacia adelante")          
+                        elif "sofía" in text_str and "derecha" in text_str:
+                            serialPortSTM32.write(b"d \r\n")
+                            print("Comando de voz hacia la derecha")               
+                        elif "sofía" in text_str and "atrás" in text_str:
+                            serialPortSTM32.write(b"s \r\n")
+                            print("Comando de voz hacia atras")
+                        elif "sofía" in text_str and "izquierda" in text_str:
+                            serialPortSTM32.write(b"a \r\n")
+                            print("Comando de voz hacia la izquierda")
+                        elif ("sofía" in text_str and "deten" in text_str) or ("sofía" in text_str and "párate" in text_str) or ("sofía" in text_str and "alto" in text_str):
+                            serialPortSTM32.write(b"x \r\n")
+                            print("Comando de voz detener silla")
+                        
+                    past_text_str = text_str
 
 
     except KeyboardInterrupt:
