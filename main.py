@@ -57,7 +57,7 @@ def callback(indata, frames, time, status):
 # Set up serialPorts.
 serialPortSTM32 = serial.Serial(port="/dev/ttyACM0", baudrate=9600,bytesize=8, timeout=2, stopbits=serial.STOPBITS_ONE)
 
-#serialPortGPRS = serial.Serial("/dev/ttyS0", baudrate=9600, timeout=1)
+serialPortGPRS = serial.Serial("/dev/ttyS0", baudrate=9600, timeout=1)
 
 
 #Defining fuction to know if there is internet conexion.
@@ -108,7 +108,7 @@ def test_GPRS_connection():
     print(rcv)
 
 
-def send_GPRS_FallEvent(username,password,photo,latitude,longitude,dataTime,hour):
+def send_GPRS_FallEvent(username,password,latitude,longitude,dataTime,hour):
     serialPortGPRS.write(b'AT+SAPBR=3,1,"Contype","GPRS"\r\n')
     rcv = serialPortGPRS.readall()
     print(rcv)
@@ -133,7 +133,7 @@ def send_GPRS_FallEvent(username,password,photo,latitude,longitude,dataTime,hour
     serialPortGPRS.write(b'AT+HTTPSSL=0\r\n')
     rcv = serialPortGPRS.readall()
     print(rcv)
-    serialPortGPRS.write(b'AT+HTTPPARA="URL","http://148.255.129.119:7000/api/FallEvent"\r\n')
+    serialPortGPRS.write(b'AT+HTTPPARA="URL","http://148.255.92.117:7000/api/FallEvent"\r\n')
     rcv = serialPortGPRS.readall()
     print(rcv)
     serialPortGPRS.write(b'AT+HTTPPARA="CONTENT","application/json"\r\n')
@@ -165,7 +165,7 @@ def send_GPRS_FallEvent(username,password,photo,latitude,longitude,dataTime,hour
     serialPortGPRS.write(b'AT+HTTPREAD\r\n')
     rcv = serialPortGPRS.readall()
     print(rcv)
-    # time.sleep(5)
+    time.sleep(5)
     rcv = rcv.decode()
     rcv = rcv[rcv.find('{'):]
     rcv = rcv.replace('\\',"")
@@ -174,7 +174,9 @@ def send_GPRS_FallEvent(username,password,photo,latitude,longitude,dataTime,hour
     return clean_json
     
 def send_GPRS_SMS(num,username,name,lastname,latitute,longitude):
-    time.sleep(5)
+    time.sleep(15)
+    serialPortGPRS.write(b'AT+CMGF=1\r\n')
+    time.sleep(1)
     serialPortGPRS.write(b'AT+CMGS="' + num.encode() + b'"\r')
     output = "Se ha detectado una posible caida! \n"+"Informacion del usuario de la silla de ruedas:\n"+"Usuario: "+username+"\n"+"Nombre: "+name+"\n"+"Apellido: "+lastname+"\n"+"Para ver la ubicacion acceda al siguiente enlace:\n"+"https://www.google.com/maps/search/?api=1&query="+str(latitute)+","+str(longitude)+" \n"+"Para mas informacion visitar el sitio web https://telecos.me/ o revisar su correo electronico asociado a la aplicacion."
     rcv = serialPortGPRS.readall()
@@ -230,7 +232,7 @@ def api_rest_request_thread():
                 #True: There is internet connection, false: There is not
                 if connect():
                     # Make HTTP request to the API-REST aplication of the project.
-                    response = requests.post('http://148.255.129.119:7000/api/FallEvent', json ={
+                    response = requests.post('http://148.255.92.117:7000/api/FallEvent', json ={
                             "username": username,
                             "password": password,
                             "photo": "data:image/jpeg;base64,"+photo,
@@ -245,16 +247,16 @@ def api_rest_request_thread():
                     print(dataFromServer)
 
                     for phoneNumber in dataFromServer["numbers"]:
-                       send_GPRS_SMS(phoneNumber, dataFromServer["username"], dataFromServer["name"], dataFromServer["lastname"], 18.47186, -69.89232)
+                       send_GPRS_SMS(phoneNumber, dataFromServer["username"], dataFromServer["name"], dataFromServer["lastname"], 19.270, -70.4030)
                     
                 else:
-                    dataFromServer = json.loads(send_GPRS_FallEvent(username, password, photo, 18.47186, -69.89232, dataTime, hour))
+                    dataFromServer = json.loads(send_GPRS_FallEvent(username, password, 19.270, -70.4030, dataTime, hour))
                     for phoneNumber in dataFromServer["numbers"]:
-                       send_GPRS_SMS(phoneNumber, dataFromServer["username"], dataFromServer["name"], dataFromServer["lastname"], 18.47186, -69.89232)
+                       send_GPRS_SMS(phoneNumber, dataFromServer["username"], dataFromServer["name"], dataFromServer["lastname"], 19.270, -70.4030)
 
                 
                 #Close camara.
-                camera.close()
+                #camera.close()
                 time.sleep(600) # Delay to avoid over messages to the page.
                 
         #Handle errors.
@@ -322,10 +324,10 @@ def speech_recognition_thread():
                     data = q.get()
                     if rec.AcceptWaveform(data):
                         text_str = str(json.loads(rec.Result()+"")['text'])
-                        print("Mensaje voz: "+text_str)
+                        #print("Mensaje voz: "+text_str)
                     else:
                         text_str = str(json.loads(rec.PartialResult()+"")['partial'])
-                        print("Mensaje voz: "+text_str)
+                        #print("Mensaje voz: "+text_str)
                     if dump_fn is not None:
                         dump_fn.write(data)
 
@@ -359,13 +361,13 @@ def speech_recognition_thread():
             
 
 def main():
-    #test_GPRS_connection()
+    test_GPRS_connection()
         
-    #thread1 = threading.Thread(target=api_rest_request_thread)
+    thread1 = threading.Thread(target=api_rest_request_thread)
     
     thread2 = threading.Thread(target=speech_recognition_thread)
     
-    #thread1.start()
+    thread1.start()
     thread2.start()
     
 
