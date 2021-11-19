@@ -22,7 +22,8 @@ import serial
 import urllib.request
 # Module that helps to send SMS message.
 from curses import ascii
-
+# importing module of wheelchair-gps
+import wheelchair_gps
 
 #Modules for Speech Recognition ------------------------------------------------------------
 
@@ -55,7 +56,7 @@ def callback(indata, frames, time, status):
     
     
 # Set up serialPorts.
-serialPortSTM32 = serial.Serial(port="/dev/ttyACM0", baudrate=9600,bytesize=8, timeout=2, stopbits=serial.STOPBITS_ONE)
+serialPortSTM32 = serial.Serial(port="/dev/ttyACM1", baudrate=9600,bytesize=8, timeout=2, stopbits=serial.STOPBITS_ONE)
 
 serialPortGPRS = serial.Serial("/dev/ttyS0", baudrate=9600, timeout=1)
 
@@ -133,7 +134,7 @@ def send_GPRS_FallEvent(username,password,latitude,longitude,dataTime,hour):
     serialPortGPRS.write(b'AT+HTTPSSL=0\r\n')
     rcv = serialPortGPRS.readall()
     print(rcv)
-    serialPortGPRS.write(b'AT+HTTPPARA="URL","http://148.255.92.117:7000/api/FallEvent"\r\n')
+    serialPortGPRS.write(b'AT+HTTPPARA="URL","http://telecos.me/api/FallEvent"\r\n')
     rcv = serialPortGPRS.readall()
     print(rcv)
     serialPortGPRS.write(b'AT+HTTPPARA="CONTENT","application/json"\r\n')
@@ -142,7 +143,7 @@ def send_GPRS_FallEvent(username,password,latitude,longitude,dataTime,hour):
     serialPortGPRS.write(b'AT+HTTPDATA=10000,10000\r\n')
     rcv = serialPortGPRS.readall()
     print(rcv)
-#     "data:image/jpeg;base64," + photo
+    #"data:image/jpeg;base64," + photo
     data = {
         "username": username,
         "password": password,
@@ -201,10 +202,10 @@ def api_rest_request_thread():
                 #PiCamara -----------------------------------------------------------------------------------
                 print("Fall Event have been detected. \n")
                 
-                #camera = PiCamera() #Start PiCamara.
-                #camera.resolution = (460, 340) #setup resolution
-                #time.sleep(2) # Delay to give time to the module to start.
-                #camera.capture("/home/pi/Pictures/fallEvent.jpg") #Capture a image and then save it.
+                camera = PiCamera() #Start PiCamara.
+                camera.resolution = (460, 340) #setup resolution
+                time.sleep(2) # Delay to give time to the module to start.
+                camera.capture("/home/pi/Pictures/fallEvent.jpg") #Capture a image and then save it.
 
                 #Base64 encode and decode -------------------------------------------------------------------
 
@@ -218,21 +219,33 @@ def api_rest_request_thread():
                 #Preparing to obtain hour.
                 dt = datetime.now()
 
-                #Preparing to obtain localization
-                myloc = geocoder.ip('me') #Get coordinate base on ip address.
 
                 #Defining parameter Json
                 username = "usuariosilla1"
                 password = "12345678"
-                latitude = myloc.lat
-                longitude = myloc.lng
+                
+                location = wheelchair_gps.get_location()
+                
+                #Verify the module GPS resturn data
+                if(location.size() >= 2):
+                    latitude = location[0]
+                    longitude = location[1]
+                    
+                else:
+                    #Preparing to obtain localization by ip address. 
+                    myloc = geocoder.ip('me') #Get coordinate base on ip address.
+                
+                    latitude = myloc.lat
+                    longitude = myloc.lng
+                    
+                    
                 dataTime = str(date.today())
                 hour = dt.strftime("%H:%M")
 
                 #True: There is internet connection, false: There is not
                 if connect():
                     # Make HTTP request to the API-REST aplication of the project.
-                    response = requests.post('http://148.255.92.117:7000/api/FallEvent', json ={
+                    response = requests.post('http://telecos.me/api/FallEvent', json ={
                             "username": username,
                             "password": password,
                             "photo": "data:image/jpeg;base64,"+photo,
@@ -247,16 +260,16 @@ def api_rest_request_thread():
                     print(dataFromServer)
 
                     for phoneNumber in dataFromServer["numbers"]:
-                       send_GPRS_SMS(phoneNumber, dataFromServer["username"], dataFromServer["name"], dataFromServer["lastname"], 19.270, -70.4030)
+                       send_GPRS_SMS(phoneNumber, dataFromServer["username"], dataFromServer["name"], dataFromServer["lastname"], latitude, longitude)
                     
                 else:
-                    dataFromServer = json.loads(send_GPRS_FallEvent(username, password, 19.270, -70.4030, dataTime, hour))
+                    dataFromServer = json.loads(send_GPRS_FallEvent(username, password, latitude, longitude, dataTime, hour))
                     for phoneNumber in dataFromServer["numbers"]:
-                       send_GPRS_SMS(phoneNumber, dataFromServer["username"], dataFromServer["name"], dataFromServer["lastname"], 19.270, -70.4030)
+                       send_GPRS_SMS(phoneNumber, dataFromServer["username"], dataFromServer["name"], dataFromServer["lastname"], latitude, longitude)
 
                 
                 #Close camara.
-                #camera.close()
+                camera.close()
                 time.sleep(600) # Delay to avoid over messages to the page.
                 
         #Handle errors.
@@ -365,10 +378,10 @@ def main():
         
     thread1 = threading.Thread(target=api_rest_request_thread)
     
-    thread2 = threading.Thread(target=speech_recognition_thread)
+    #thread2 = threading.Thread(target=speech_recognition_thread)
     
     thread1.start()
-    thread2.start()
+    #thread2.start()
     
 
 
