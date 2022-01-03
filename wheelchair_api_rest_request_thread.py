@@ -62,19 +62,17 @@ def api_rest_request_thread():
                 username = "usuariosilla1"
                 password = "12345678"
 
-                location = wheelchair_gps.get_location()
-
-                # Verify the module GPS resturn data
-                if (len(location) >= 2):
+                try:
+                    # Verify the module GPS resturn data
+                    location = wheelchair_gps.get_location()
                     latitude = location[0]
                     longitude = location[1]
-
-                else:
+                except:
                     # Preparing to obtain localization by ip address.
                     myloc = geocoder.ip('me')  # Get coordinate base on ip address.
-
                     latitude = myloc.lat
                     longitude = myloc.lng
+                    
 
                 dataTime = str(date.today())
                 hour = dt.strftime("%H:%M")

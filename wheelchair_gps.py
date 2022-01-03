@@ -2,7 +2,7 @@ import serial
 from time import sleep
 import sys
 
-ser = serial.Serial ("/dev/ttyACM0")
+ser = serial.Serial ("/dev/ttyACM1")
 gpgga_info = "$GPGGA,"
 GPGGA_buffer = 0
 NMEA_buff = 0
